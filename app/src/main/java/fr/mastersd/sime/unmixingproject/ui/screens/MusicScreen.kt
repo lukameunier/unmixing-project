@@ -14,9 +14,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun MusicScreen(onNavigateToHome: () -> Unit = {}) {
+fun MusicScreen(
+    modifier: Modifier,
+    onNavigateToHome: () -> Unit = {}
+) {
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -38,5 +41,5 @@ fun MusicScreen(onNavigateToHome: () -> Unit = {}) {
 @Preview(showBackground = true)
 @Composable
 fun MusicScreenPreview() {
-    MusicScreen()
+    MusicScreen(modifier = Modifier.fillMaxSize())
 }

@@ -19,6 +19,7 @@ fun Navigation(modifier: Modifier) {
     ) {
         composable(Screen.Home.route) {
             HomeScreen(
+                modifier = modifier,
                 onNavigateToMusic = {
                     navController.navigate(Screen.Music.route)
                 }
@@ -27,6 +28,7 @@ fun Navigation(modifier: Modifier) {
 
         composable(Screen.Music.route) {
             MusicScreen(
+                modifier = modifier,
                 onNavigateToHome = {
                     navController.navigate(Screen.Home.route)
                 }
