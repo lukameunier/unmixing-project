@@ -58,19 +58,6 @@ fun HomeScreen(
             Button(
                 onClick = {},
                 shape = MaterialTheme.shapes.small,
-                modifier = Modifier.weight(1f)
-            ) {
-                Icon(
-                    modifier = Modifier.size(40.dp),
-                    painter = painterResource(id = R.drawable.mic_24dp),
-                    contentDescription = "Icon",
-                    tint = Color.Green
-                )
-            }
-
-            Button(
-                onClick = {},
-                shape = MaterialTheme.shapes.small,
                 modifier = Modifier.weight(4f)
             ) {
                 Icon(
@@ -81,6 +68,19 @@ fun HomeScreen(
                 )
 
                 Text(text = "Import songs")
+            }
+
+            Button(
+                onClick = {},
+                shape = MaterialTheme.shapes.small,
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(
+                    modifier = Modifier.size(40.dp),
+                    painter = painterResource(id = R.drawable.mic_24dp),
+                    contentDescription = "Icon",
+                    tint = Color.Green
+                )
             }
         }
 
