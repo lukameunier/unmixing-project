@@ -16,24 +16,28 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import fr.mastersd.sime.unmixingproject.R
-import fr.mastersd.sime.unmixingproject.repository.FakeSongRepositoryImpl
-import fr.mastersd.sime.unmixingproject.repository.SongRepository
 import fr.mastersd.sime.unmixingproject.ui.components.SongItem
 import fr.mastersd.sime.unmixingproject.ui.theme.UnmixingProjectTheme
+import fr.mastersd.sime.unmixingproject.viewmodels.HomeViewModel
 
 @Composable
 fun HomeScreen(
     modifier: Modifier,
-    repository: SongRepository,
+    viewModel: HomeViewModel = hiltViewModel(),
     onNavigateToMusic: () -> Unit = {}
 ) {
+    val songs by viewModel.songs.collectAsStateWithLifecycle()
+
     Column(
         modifier = modifier.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -43,15 +47,11 @@ fun HomeScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "Songs",
-                style = MaterialTheme.typography.headlineLarge
-            )
-
+            Text(text = "Songs", style = MaterialTheme.typography.headlineLarge)
             Icon(
                 modifier = Modifier.size(40.dp),
                 painter = painterResource(id = R.drawable.search_24dp),
-                contentDescription = "Icon",
+                contentDescription = "Search",
                 tint = Color.Green
             )
         }
@@ -60,10 +60,7 @@ fun HomeScreen(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            items(
-                items = repository.getAllSongs(),
-                key = { it.id }
-            ) { song ->
+            items(items = songs, key = { it.id }) { song ->
                 SongItem(song = song)
             }
         }
@@ -80,10 +77,9 @@ fun HomeScreen(
                 Icon(
                     modifier = Modifier.size(40.dp),
                     painter = painterResource(id = R.drawable.download_24dp),
-                    contentDescription = "Icon",
+                    contentDescription = "Import",
                     tint = Color.Green
                 )
-
                 Text(text = "Import songs")
             }
 
@@ -95,7 +91,7 @@ fun HomeScreen(
                 Icon(
                     modifier = Modifier.size(40.dp),
                     painter = painterResource(id = R.drawable.mic_24dp),
-                    contentDescription = "Icon",
+                    contentDescription = "Record",
                     tint = Color.Green
                 )
             }
@@ -108,25 +104,17 @@ fun HomeScreen(
                 contentColor = Color.Black
             ),
             shape = MaterialTheme.shapes.small,
-            onClick = onNavigateToMusic
+            onClick = { viewModel.testLoadModel() }
         ) {
             Text(text = "Unmix")
         }
     }
 }
 
-@Preview(
-    name = "Dark Mode",
-    uiMode = Configuration.UI_MODE_NIGHT_YES,
-    showBackground = true
-)
+@Preview(name = "Dark Mode", uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
 @Composable
 fun MyComponentPreview() {
     UnmixingProjectTheme {
-        HomeScreen(
-            modifier = Modifier.fillMaxSize(),
-            repository = FakeSongRepositoryImpl(),
-            onNavigateToMusic = {}
-        )
+        HomeScreen(modifier = Modifier.fillMaxSize())
     }
 }

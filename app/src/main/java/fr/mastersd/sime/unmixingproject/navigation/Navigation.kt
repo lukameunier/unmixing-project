@@ -5,10 +5,8 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import fr.mastersd.sime.unmixingproject.repository.FakeSongRepositoryImpl
 import fr.mastersd.sime.unmixingproject.ui.screens.HomeScreen
 import fr.mastersd.sime.unmixingproject.ui.screens.MusicScreen
-
 
 @Composable
 fun Navigation(modifier: Modifier) {
@@ -21,7 +19,6 @@ fun Navigation(modifier: Modifier) {
         composable(Screen.Home.route) {
             HomeScreen(
                 modifier = modifier,
-                repository = FakeSongRepositoryImpl(),
                 onNavigateToMusic = {
                     navController.navigate(Screen.Music.route)
                 }
