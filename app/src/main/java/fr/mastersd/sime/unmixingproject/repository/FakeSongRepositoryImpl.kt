@@ -6,8 +6,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import javax.inject.Inject
 
-class FakeSongRepositoryImpl : SongRepository {
+class FakeSongRepositoryImpl @Inject constructor(): SongRepository {
 
     val fakeSongs = listOf(
         Song(id = "1",  title = "Bohemian Rhapsody",       uri = "content://media/external/audio/media/1".toUri(),  duration = 354000L),
