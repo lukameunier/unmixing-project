@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -127,20 +126,15 @@ fun HomeScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "Songs",
-                style = MaterialTheme.typography.headlineLarge
-            )
-
+            Text(text = "Songs", style = MaterialTheme.typography.headlineLarge)
             Icon(
                 modifier = Modifier.size(40.dp),
                 painter = painterResource(id = R.drawable.search_24dp),
-                contentDescription = "Icon",
+                contentDescription = "Search",
                 tint = Color.Green
             )
         }
 
-        // Loading indicator
         if (uiState.isLoading) {
             CircularProgressIndicator(
                 modifier = Modifier.align(Alignment.CenterHorizontally)
@@ -155,10 +149,12 @@ fun HomeScreen(
                 items = songs,
                 key = { it.id }
             ) { song ->
-                SongItem(song = song)
+                SongItem(
+                    song = song,
+                    onCLick = { onNavigateToMusic() }
+                )
             }
 
-            // Empty state
             if (songs.isEmpty() && !uiState.isLoading) {
                 item {
                     Text(
@@ -179,15 +175,12 @@ fun HomeScreen(
                 onClick = {
                     when {
                         permissionState.status.isGranted -> {
-                            // Permission granted, open file picker
                             filePickerLauncher.launch(arrayOf("audio/*"))
                         }
                         permissionState.status.shouldShowRationale -> {
-                            // Show rationale dialog
                             showPermissionRationale = true
                         }
                         else -> {
-                            // Request permission
                             permissionState.launchPermissionRequest()
                         }
                     }
@@ -199,60 +192,26 @@ fun HomeScreen(
                 Icon(
                     modifier = Modifier.size(40.dp),
                     painter = painterResource(id = R.drawable.download_24dp),
-                    contentDescription = "Icon",
+                    contentDescription = "Import",
                     tint = Color.Green
                 )
-
                 Text(text = "Import songs")
             }
-
-            Button(
-                onClick = {},
-                shape = MaterialTheme.shapes.small,
-                modifier = Modifier.weight(1f)
-            ) {
-                Icon(
-                    modifier = Modifier.size(40.dp),
-                    painter = painterResource(id = R.drawable.mic_24dp),
-                    contentDescription = "Icon",
-                    tint = Color.Green
-                )
-            }
         }
-
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color.Green,
-                contentColor = Color.Black
-            ),
-            shape = MaterialTheme.shapes.small,
-            onClick = onNavigateToMusic,
-            enabled = songs.isNotEmpty()
-        ) {
-            Text(text = "Unmix")
-        }
-
         SnackbarHost(hostState = snackbarHostState)
     }
 }
 
-@Preview(
-    name = "Dark Mode",
-    uiMode = Configuration.UI_MODE_NIGHT_YES,
-    showBackground = true
-)
+@Preview(name = "Dark Mode", uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
 @Composable
 fun HomeScreenPreview() {
     UnmixingProjectTheme {
-        // Preview with mock data - Note: ViewModel won't work in preview
         HomeScreenPreviewContent()
     }
 }
 
 @Composable
 private fun HomeScreenPreviewContent() {
-    // Simplified preview without ViewModel
     Column(
         modifier = Modifier
             .fillMaxSize()
