@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -22,11 +23,15 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fr.mastersd.sime.unmixingproject.R
+import fr.mastersd.sime.unmixingproject.repository.FakeSongRepositoryImpl
+import fr.mastersd.sime.unmixingproject.repository.SongRepository
+import fr.mastersd.sime.unmixingproject.ui.components.SongItem
 import fr.mastersd.sime.unmixingproject.ui.theme.UnmixingProjectTheme
 
 @Composable
 fun HomeScreen(
     modifier: Modifier,
+    repository: SongRepository,
     onNavigateToMusic: () -> Unit = {}
 ) {
     Column(
@@ -49,6 +54,18 @@ fun HomeScreen(
                 contentDescription = "Icon",
                 tint = Color.Green
             )
+        }
+
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            items(
+                items = repository.getAllSongs(),
+                key = { it.id }
+            ) { song ->
+                SongItem(song = song)
+            }
         }
 
         Row(
@@ -106,6 +123,10 @@ fun HomeScreen(
 @Composable
 fun MyComponentPreview() {
     UnmixingProjectTheme {
-        HomeScreen(modifier = Modifier.fillMaxSize())
+        HomeScreen(
+            modifier = Modifier.fillMaxSize(),
+            repository = FakeSongRepositoryImpl(),
+            onNavigateToMusic = {}
+        )
     }
 }
