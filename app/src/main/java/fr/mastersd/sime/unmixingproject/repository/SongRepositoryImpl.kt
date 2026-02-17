@@ -13,12 +13,7 @@ class SongRepositoryImpl @Inject constructor(
     private val songDao: SongDao
 ) : SongRepository {
 
-    override fun getAllSongs(): List<Song> {
-        // Note: This is a synchronous call, consider using Flow instead
-        return emptyList()
-    }
-
-    fun getAllSongsFlow(): Flow<List<Song>> {
+    override fun getAllSongs(): Flow<List<Song>> {
         return songDao.getAllSongs().map { it.toSongs() }
     }
 
@@ -50,4 +45,3 @@ class SongRepositoryImpl @Inject constructor(
         songDao.updateCachedFilePath(id, cachedFilePath)
     }
 }
-

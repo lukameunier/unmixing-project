@@ -8,7 +8,6 @@ import androidx.navigation.compose.rememberNavController
 import fr.mastersd.sime.unmixingproject.ui.screens.HomeScreen
 import fr.mastersd.sime.unmixingproject.ui.screens.MusicScreen
 
-
 @Composable
 fun Navigation(modifier: Modifier) {
     val navController = rememberNavController()

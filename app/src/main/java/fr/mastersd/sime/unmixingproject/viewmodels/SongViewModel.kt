@@ -38,7 +38,7 @@ class SongViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(SongUiState())
     val uiState: StateFlow<SongUiState> = _uiState.asStateFlow()
 
-    val songs: StateFlow<List<Song>> = songRepository.getAllSongsFlow()
+    val songs: StateFlow<List<Song>> = songRepository.getAllSongs()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),

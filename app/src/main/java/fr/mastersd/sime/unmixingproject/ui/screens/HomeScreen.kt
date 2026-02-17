@@ -127,15 +127,11 @@ fun HomeScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "Songs",
-                style = MaterialTheme.typography.headlineLarge
-            )
-
+            Text(text = "Songs", style = MaterialTheme.typography.headlineLarge)
             Icon(
                 modifier = Modifier.size(40.dp),
                 painter = painterResource(id = R.drawable.search_24dp),
-                contentDescription = "Icon",
+                contentDescription = "Search",
                 tint = Color.Green
             )
         }
@@ -199,10 +195,9 @@ fun HomeScreen(
                 Icon(
                     modifier = Modifier.size(40.dp),
                     painter = painterResource(id = R.drawable.download_24dp),
-                    contentDescription = "Icon",
+                    contentDescription = "Import",
                     tint = Color.Green
                 )
-
                 Text(text = "Import songs")
             }
 
@@ -214,7 +209,7 @@ fun HomeScreen(
                 Icon(
                     modifier = Modifier.size(40.dp),
                     painter = painterResource(id = R.drawable.mic_24dp),
-                    contentDescription = "Icon",
+                    contentDescription = "Record",
                     tint = Color.Green
                 )
             }
@@ -237,11 +232,7 @@ fun HomeScreen(
     }
 }
 
-@Preview(
-    name = "Dark Mode",
-    uiMode = Configuration.UI_MODE_NIGHT_YES,
-    showBackground = true
-)
+@Preview(name = "Dark Mode", uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
 @Composable
 fun HomeScreenPreview() {
     UnmixingProjectTheme {

@@ -4,7 +4,7 @@ import fr.mastersd.sime.unmixingproject.data.Song
 import kotlinx.coroutines.flow.Flow
 
 interface SongRepository {
-    fun getAllSongs(): List<Song>
+    fun getAllSongs(): Flow<List<Song>>
     suspend fun getSongById(id: String): Song?
     suspend fun addSong(song: Song)
     suspend fun deleteSong(id: String)
