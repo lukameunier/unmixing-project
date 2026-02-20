@@ -16,8 +16,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -42,7 +44,7 @@ import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
 import fr.mastersd.sime.unmixingproject.R
-import fr.mastersd.sime.unmixingproject.ui.components.SongItem
+import fr.mastersd.sime.unmixingproject.ui.components.SeparatedTrackItem
 import fr.mastersd.sime.unmixingproject.ui.theme.UnmixingProjectTheme
 import fr.mastersd.sime.unmixingproject.viewmodels.SongViewModel
 
@@ -54,7 +56,7 @@ fun HomeScreen(
     onNavigateToMusic: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val songs by viewModel.songs.collectAsState()
+    val separatedTracks by viewModel.separatedTracks.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
     var showPermissionRationale by remember { mutableStateOf(false) }
@@ -68,18 +70,18 @@ fun HomeScreen(
 
     val permissionState = rememberPermissionState(audioPermission)
 
-    // File picker launcher
+    // File picker launcher - directly process audio after selection
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
-        uri?.let { viewModel.importSongFromUri(it) }
+        uri?.let { viewModel.processAudioFromUri(it) }
     }
 
-    // Handle import success
-    LaunchedEffect(uiState.importSuccess) {
-        if (uiState.importSuccess) {
-            snackbarHostState.showSnackbar("Musique importée avec succès!")
-            viewModel.clearImportSuccess()
+    // Handle process success
+    LaunchedEffect(uiState.processSuccess) {
+        if (uiState.processSuccess) {
+            snackbarHostState.showSnackbar("Audio traité avec succès! Pistes vocals et instrumental séparées.")
+            viewModel.clearProcessSuccess()
         }
     }
 
@@ -97,7 +99,7 @@ fun HomeScreen(
             onDismissRequest = { showPermissionRationale = false },
             title = { Text("Permission requise") },
             text = {
-                Text("L'application a besoin d'accéder à vos fichiers audio pour importer des musiques.")
+                Text("L'application a besoin d'accéder à vos fichiers audio pour les traiter.")
             },
             confirmButton = {
                 TextButton(
@@ -126,7 +128,7 @@ fun HomeScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = "Songs", style = MaterialTheme.typography.headlineLarge)
+            Text(text = "Separated Tracks", style = MaterialTheme.typography.headlineLarge)
             Icon(
                 modifier = Modifier.size(40.dp),
                 painter = painterResource(id = R.drawable.search_24dp),
@@ -135,10 +137,30 @@ fun HomeScreen(
             )
         }
 
+        // Loading indicator with progress
         if (uiState.isLoading) {
-            CircularProgressIndicator(
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            )
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Traitement en cours... ${(uiState.processingProgress * 100).toInt()}%",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                LinearProgressIndicator(
+                    progress = { uiState.processingProgress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                )
+                uiState.currentAudioBuffer?.let { buffer ->
+                    Text(
+                        text = "Fichier: ${buffer.title}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
 
         LazyColumn(
@@ -146,19 +168,17 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             items(
-                items = songs,
+                items = separatedTracks,
                 key = { it.id }
-            ) { song ->
-                SongItem(
-                    song = song,
-                    onCLick = { onNavigateToMusic() }
-                )
+            ) { track ->
+                SeparatedTrackItem(track = track)
             }
 
-            if (songs.isEmpty() && !uiState.isLoading) {
+            // Empty state
+            if (separatedTracks.isEmpty() && !uiState.isLoading) {
                 item {
                     Text(
-                        text = "Aucune musique importée. Cliquez sur 'Import songs' pour commencer.",
+                        text = "Aucune piste séparée. Importez un fichier audio pour séparer les vocals et l'instrumental.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(16.dp)
@@ -175,12 +195,15 @@ fun HomeScreen(
                 onClick = {
                     when {
                         permissionState.status.isGranted -> {
+                            // Permission granted, open file picker and process immediately
                             filePickerLauncher.launch(arrayOf("audio/*"))
                         }
                         permissionState.status.shouldShowRationale -> {
+                            // Show rationale dialog
                             showPermissionRationale = true
                         }
                         else -> {
+                            // Request permission
                             permissionState.launchPermissionRequest()
                         }
                     }
@@ -192,12 +215,39 @@ fun HomeScreen(
                 Icon(
                     modifier = Modifier.size(40.dp),
                     painter = painterResource(id = R.drawable.download_24dp),
-                    contentDescription = "Import",
+                    contentDescription = "Import & Process",
                     tint = Color.Green
                 )
-                Text(text = "Import songs")
+                Text(text = "Import & Unmix")
+            }
+
+            Button(
+                onClick = {},
+                shape = MaterialTheme.shapes.small,
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(
+                    modifier = Modifier.size(40.dp),
+                    painter = painterResource(id = R.drawable.mic_24dp),
+                    contentDescription = "Record",
+                    tint = Color.Green
+                )
             }
         }
+
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color.Green,
+                contentColor = Color.Black
+            ),
+            shape = MaterialTheme.shapes.small,
+            onClick = onNavigateToMusic,
+            enabled = separatedTracks.isNotEmpty()
+        ) {
+            Text(text = "View Tracks")
+        }
+
         SnackbarHost(hostState = snackbarHostState)
     }
 }
@@ -206,12 +256,14 @@ fun HomeScreen(
 @Composable
 fun HomeScreenPreview() {
     UnmixingProjectTheme {
+        // Preview with mock data - Note: ViewModel won't work in preview
         HomeScreenPreviewContent()
     }
 }
 
 @Composable
 private fun HomeScreenPreviewContent() {
+    // Simplified preview without ViewModel
     Column(
         modifier = Modifier
             .fillMaxSize()

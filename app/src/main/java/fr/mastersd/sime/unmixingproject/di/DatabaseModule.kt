@@ -8,7 +8,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import fr.mastersd.sime.unmixingproject.data.local.AppDatabase
-import fr.mastersd.sime.unmixingproject.data.local.SongDao
+import fr.mastersd.sime.unmixingproject.data.local.SeparatedTrackDao
 import javax.inject.Singleton
 
 @Module
@@ -22,13 +22,15 @@ object DatabaseModule {
             context,
             AppDatabase::class.java,
             "unmixing_database"
-        ).build()
+        )
+            .fallbackToDestructiveMigration(dropAllTables = true)
+            .build()
     }
 
     @Provides
     @Singleton
-    fun provideSongDao(database: AppDatabase): SongDao {
-        return database.songDao()
+    fun provideSeparatedTrackDao(database: AppDatabase): SeparatedTrackDao {
+        return database.separatedTrackDao()
     }
 }
 
