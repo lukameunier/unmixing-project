@@ -1,5 +1,6 @@
 package fr.mastersd.sime.unmixingproject.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,12 +25,14 @@ import java.util.Locale
 @Composable
 fun SeparatedTrackItem(
     track: SeparatedTrack,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onCLick: () -> Unit = {}
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(vertical = 8.dp)
+            .clickable { onCLick() },
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {

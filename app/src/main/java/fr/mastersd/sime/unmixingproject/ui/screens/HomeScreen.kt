@@ -171,7 +171,10 @@ fun HomeScreen(
                 items = separatedTracks,
                 key = { it.id }
             ) { track ->
-                SeparatedTrackItem(track = track)
+                SeparatedTrackItem(
+                    track = track,
+                    onCLick = { onNavigateToMusic() }
+                )
             }
 
             // Empty state
@@ -233,19 +236,6 @@ fun HomeScreen(
                     tint = Color.Green
                 )
             }
-        }
-
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color.Green,
-                contentColor = Color.Black
-            ),
-            shape = MaterialTheme.shapes.small,
-            onClick = onNavigateToMusic,
-            enabled = separatedTracks.isNotEmpty()
-        ) {
-            Text(text = "View Tracks")
         }
 
         SnackbarHost(hostState = snackbarHostState)
