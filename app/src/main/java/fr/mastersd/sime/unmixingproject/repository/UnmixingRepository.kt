@@ -4,7 +4,8 @@ import android.util.Log
 import fr.mastersd.sime.unmixingproject.data.AudioBuffer
 import fr.mastersd.sime.unmixingproject.data.ProcessingState
 import fr.mastersd.sime.unmixingproject.data.SeparatedTrack
-import fr.mastersd.sime.unmixingproject.tflite.TFLiteModelRunner
+import fr.mastersd.sime.unmixingproject.pytorch.UnmixingPipeline
+import fr.mastersd.sime.unmixingproject.pytorch.UnmixingProgress
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -16,7 +17,7 @@ import javax.inject.Singleton
 
 @Singleton
 class UnmixingRepository @Inject constructor(
-    private val modelRunner: TFLiteModelRunner,
+    private val pipeline: UnmixingPipeline,
     private val separatedTrackRepository: SeparatedTrackRepository
 ) {
 
@@ -24,47 +25,41 @@ class UnmixingRepository @Inject constructor(
         private const val TAG = "UnmixingRepository"
     }
 
-    /**
-     * Process audio buffer and separate vocals from instrumental.
-     * The model outputs two tracks: vocals and instrumental.
-     */
     fun unmix(audioBuffer: AudioBuffer): Flow<ProcessingState> = flow {
         emit(ProcessingState.Loading(0f))
 
         Log.d(TAG, "Starting unmixing for: ${audioBuffer.title}")
         Log.d(TAG, "Audio data size: ${audioBuffer.audioData.size}")
 
-        // Initialize the model
-        modelRunner.initialize()
+        pipeline.initialize()
         emit(ProcessingState.Loading(0.1f))
 
-        // Process the full audio with chunking and get vocals/instrumental
-        var lastProgress = 0.1f
-        val result = modelRunner.processFullAudio(audioBuffer.audioData) { progress ->
-            // Map model progress (0-1) to our progress range (0.1-0.9)
-            lastProgress = 0.1f + progress * 0.8f
+        // Collecte le Flow de UnmixingPipeline — pas de problème suspend
+        pipeline.processFullAudio(audioBuffer.audioData).collect { update ->
+            when (update) {
+                is UnmixingProgress.Progress -> {
+                    emit(ProcessingState.Loading(0.1f + update.value * 0.8f))
+                }
+                is UnmixingProgress.Done -> {
+                    val result = update.result
+                    Log.d(TAG, "Processing complete. Vocals: ${result.vocals.size}, Instrumental: ${result.instrumental.size}")
+
+                    val separatedTrack = SeparatedTrack(
+                        id = UUID.randomUUID().toString(),
+                        originalTitle = audioBuffer.title,
+                        vocalData = result.vocals,
+                        instrumentalData = result.instrumental,
+                        sampleRate = audioBuffer.sampleRate,
+                        processedAt = System.currentTimeMillis()
+                    )
+
+                    separatedTrackRepository.saveTrack(separatedTrack)
+                    emit(ProcessingState.Loading(1f))
+                    Log.d(TAG, "Track saved: ${separatedTrack.id}")
+                    emit(ProcessingState.Success(separatedTrack))
+                }
+            }
         }
-        emit(ProcessingState.Loading(0.9f))
-
-        Log.d(TAG, "Model processing complete. Vocals: ${result.vocals.size}, Instrumental: ${result.instrumental.size}")
-
-        // Create the separated track object
-        val separatedTrack = SeparatedTrack(
-            id = UUID.randomUUID().toString(),
-            originalTitle = audioBuffer.title,
-            vocalData = result.vocals,
-            instrumentalData = result.instrumental,
-            sampleRate = audioBuffer.sampleRate,
-            processedAt = System.currentTimeMillis()
-        )
-
-        // Save the separated tracks to the database
-        separatedTrackRepository.saveTrack(separatedTrack)
-        emit(ProcessingState.Loading(1f))
-
-        Log.d(TAG, "Track saved to database: ${separatedTrack.id}")
-
-        emit(ProcessingState.Success(separatedTrack))
     }.flowOn(Dispatchers.Default)
         .catch { e ->
             Log.e(TAG, "Error during unmixing", e)
