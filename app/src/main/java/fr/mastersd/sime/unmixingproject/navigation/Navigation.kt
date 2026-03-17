@@ -2,9 +2,11 @@ package fr.mastersd.sime.unmixingproject.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import fr.mastersd.sime.unmixingproject.ui.screens.HomeScreen
 import fr.mastersd.sime.unmixingproject.ui.screens.MusicScreen
 
@@ -25,12 +27,15 @@ fun Navigation(modifier: Modifier) {
             )
         }
 
-        composable(Screen.Music.route) {
+        composable(
+            route = Screen.Music.route,
+            arguments = listOf(navArgument("trackId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val trackId = backStackEntry.arguments?.getString("trackId") ?: ""
             MusicScreen(
                 modifier = modifier,
-                onNavigateToHome = {
-                    navController.navigate(Screen.Home.route)
-                }
+                trackId = trackId,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }

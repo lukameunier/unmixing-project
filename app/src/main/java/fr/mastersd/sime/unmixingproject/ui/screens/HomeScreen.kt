@@ -16,8 +16,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -53,7 +51,7 @@ import fr.mastersd.sime.unmixingproject.viewmodels.SongViewModel
 fun HomeScreen(
     modifier: Modifier,
     viewModel: SongViewModel = hiltViewModel(),
-    onNavigateToMusic: () -> Unit = {}
+    onNavigateToMusic: (trackId: String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val separatedTracks by viewModel.separatedTracks.collectAsState()
@@ -173,7 +171,7 @@ fun HomeScreen(
             ) { track ->
                 SeparatedTrackItem(
                     track = track,
-                    onCLick = { onNavigateToMusic() }
+                    onCLick = { onNavigateToMusic(track.id) }
                 )
             }
 
