@@ -1,7 +1,6 @@
 package fr.mastersd.sime.unmixingproject.repository
 
 import android.util.Log
-import fr.mastersd.sime.unmixingproject.data.AudioBuffer
 import fr.mastersd.sime.unmixingproject.data.ProcessingState
 import fr.mastersd.sime.unmixingproject.data.SeparatedTrack
 import fr.mastersd.sime.unmixingproject.pytorch.PcmChunk
@@ -44,9 +43,9 @@ class UnmixingRepository @Inject constructor(
                     val separatedTrack = SeparatedTrack(
                         id = UUID.randomUUID().toString(),
                         originalTitle = title,
-                        vocalData = update.result.vocals,
-                        instrumentalData = update.result.instrumental,
-                        sampleRate = 44100,
+                        vocalPath = update.result.vocalsPath,
+                        instrumentalPath = update.result.instrumentalPath,
+                        sampleRate = update.result.sampleRate,
                         processedAt = System.currentTimeMillis()
                     )
                     separatedTrackRepository.saveTrack(separatedTrack)

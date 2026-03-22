@@ -23,6 +23,7 @@ object PyTorchModule {
     @Provides
     @Singleton
     fun provideUnmixingPipeline(
-        modelRunner: PyTorchModelRunner
-    ): UnmixingPipeline = UnmixingPipeline(modelRunner)
+        modelRunner: PyTorchModelRunner,
+        @ApplicationContext context: Context
+    ): UnmixingPipeline = UnmixingPipeline(modelRunner, context)
 }

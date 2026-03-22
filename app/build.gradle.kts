@@ -62,6 +62,11 @@ dependencies {
     implementation(libs.pytorch.android.lite)
     implementation(libs.pytorch.android.torchvision.lite)
 
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.exoplayer.dash)
+    implementation(libs.androidx.media3.ui)
+    implementation(libs.androidx.media3.ui.compose)
+
     implementation(libs.androidx.navigation.compose)
 
     implementation(libs.hilt.android)
