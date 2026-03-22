@@ -4,6 +4,7 @@ import android.util.Log
 import fr.mastersd.sime.unmixingproject.data.AudioBuffer
 import fr.mastersd.sime.unmixingproject.data.ProcessingState
 import fr.mastersd.sime.unmixingproject.data.SeparatedTrack
+import fr.mastersd.sime.unmixingproject.pytorch.PcmChunk
 import fr.mastersd.sime.unmixingproject.pytorch.UnmixingPipeline
 import fr.mastersd.sime.unmixingproject.pytorch.UnmixingProgress
 import kotlinx.coroutines.Dispatchers
@@ -25,37 +26,30 @@ class UnmixingRepository @Inject constructor(
         private const val TAG = "UnmixingRepository"
     }
 
-    fun unmix(audioBuffer: AudioBuffer): Flow<ProcessingState> = flow {
+    fun unmixChunked(
+        title: String,
+        duration: Long,
+        chunks: Flow<PcmChunk>
+    ): Flow<ProcessingState> = flow {
         emit(ProcessingState.Loading(0f))
-
-        Log.d(TAG, "Starting unmixing for: ${audioBuffer.title}")
-        Log.d(TAG, "Audio data size: ${audioBuffer.audioData.size}")
-
         pipeline.initialize()
         emit(ProcessingState.Loading(0.1f))
 
-        // Collecte le Flow de UnmixingPipeline — pas de problème suspend
-        pipeline.processFullAudio(audioBuffer.audioData).collect { update ->
+        pipeline.processChunkedAudio(chunks).collect { update ->
             when (update) {
                 is UnmixingProgress.Progress -> {
                     emit(ProcessingState.Loading(0.1f + update.value * 0.8f))
                 }
                 is UnmixingProgress.Done -> {
-                    val result = update.result
-                    Log.d(TAG, "Processing complete. Vocals: ${result.vocals.size}, Instrumental: ${result.instrumental.size}")
-
                     val separatedTrack = SeparatedTrack(
                         id = UUID.randomUUID().toString(),
-                        originalTitle = audioBuffer.title,
-                        vocalData = result.vocals,
-                        instrumentalData = result.instrumental,
-                        sampleRate = audioBuffer.sampleRate,
+                        originalTitle = title,
+                        vocalData = update.result.vocals,
+                        instrumentalData = update.result.instrumental,
+                        sampleRate = 44100,
                         processedAt = System.currentTimeMillis()
                     )
-
                     separatedTrackRepository.saveTrack(separatedTrack)
-                    emit(ProcessingState.Loading(1f))
-                    Log.d(TAG, "Track saved: ${separatedTrack.id}")
                     emit(ProcessingState.Success(separatedTrack))
                 }
             }

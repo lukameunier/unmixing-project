@@ -25,31 +25,32 @@ class UnmixingPipeline @Inject constructor(
      * Traite l'audio et émet le progress (0f..1f) puis le résultat final.
      * Utiliser un Flow permet d'émettre depuis UnmixingRepository sans problème suspend.
      */
-    fun processFullAudio(
-        audioData: FloatArray,
-        isInterleaved: Boolean = true
+    fun processChunkedAudio(
+        chunks: Flow<PcmChunk>
     ): Flow<UnmixingProgress> = flow {
-        check(modelRunner.isInitialized) { "Model not initialized. Call initialize() first." }
-
-        val stereo = AudioPreprocessor.toStereoChannels(audioData, isInterleaved)
-        val chunks = AudioPreprocessor.buildChunks(stereo)
+        check(modelRunner.isInitialized) { "Model not initialized" }
 
         val vocalsResult = mutableListOf<Float>()
         val instrumentalResult = mutableListOf<Float>()
+        var chunkIndex = 0
 
-        chunks.forEachIndexed { index, (chunkData, actualLen) ->
-            val (outputData, outputShape) = modelRunner.runInference(chunkData)
-            val samplesToTake = minOf(actualLen, outputShape[3].toInt())
-            val (vocals, instrumental) = StemPostprocessor.extractStems(
-                outputData, outputShape, samplesToTake
-            )
+        chunks.collect { chunk ->
+            val stereo = AudioPreprocessor.toStereoChannels(chunk.floats, interleaved = true)
+            val modelChunks = AudioPreprocessor.buildChunks(stereo)
 
-            vocalsResult.addAll(vocals)
-            instrumentalResult.addAll(instrumental)
+            modelChunks.forEach { (chunkData, actualLen) ->
+                val (outputData, outputShape) = modelRunner.runInference(chunkData)
+                val samplesToTake = minOf(actualLen, outputShape[3].toInt())
+                val (vocals, instrumental) = StemPostprocessor.extractStems(
+                    outputData, outputShape, samplesToTake
+                )
+                vocalsResult.addAll(vocals)
+                instrumentalResult.addAll(instrumental)
+            }
 
-            val progress = (index + 1).toFloat() / chunks.size
-            emit(UnmixingProgress.Progress(progress))
-            Log.d(TAG, "Chunk ${index + 1}/${chunks.size} processed")
+            chunkIndex++
+            emit(UnmixingProgress.Progress(chunkIndex.toFloat() / (chunkIndex + 1).toFloat()))
+            Log.d(TAG, "Chunk $chunkIndex processed, isFinal=${chunk.isFinal}")
         }
 
         emit(

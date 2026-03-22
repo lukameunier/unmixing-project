@@ -1,6 +1,7 @@
 package fr.mastersd.sime.unmixingproject.viewmodels
 
 import android.content.Context
+import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
@@ -12,6 +13,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import fr.mastersd.sime.unmixingproject.data.AudioBuffer
 import fr.mastersd.sime.unmixingproject.data.ProcessingState
 import fr.mastersd.sime.unmixingproject.data.SeparatedTrack
+import fr.mastersd.sime.unmixingproject.pytorch.AudioDecoder
 import fr.mastersd.sime.unmixingproject.repository.SeparatedTrackRepository
 import fr.mastersd.sime.unmixingproject.repository.UnmixingRepository
 import kotlinx.coroutines.Dispatchers
@@ -22,7 +24,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import javax.inject.Inject
 
@@ -86,19 +87,16 @@ class SongViewModel @Inject constructor(
                 processingProgress = 0f
             )
             try {
-                // Step 1: Load audio into buffer
-                val audioBuffer = loadAudioToBuffer(uri)
-                _uiState.value = _uiState.value.copy(
-                    currentAudioBuffer = audioBuffer,
-                    processingProgress = 0.1f
-                )
+                val title = extractTitle(uri)
+                val duration = extractDuration(uri)
 
-                // Step 2: Immediately process with the unmixing model
-                unmixingRepository.unmix(audioBuffer).collect { state ->
+                val chunks = AudioDecoder.decodeToChunks(context, uri)
+
+                unmixingRepository.unmixChunked(title, duration, chunks).collect { state ->
                     when (state) {
                         is ProcessingState.Loading -> {
                             _uiState.value = _uiState.value.copy(
-                                processingProgress = 0.1f + state.progress * 0.9f
+                                processingProgress = state.progress
                             )
                         }
                         is ProcessingState.Success -> {
@@ -106,7 +104,6 @@ class SongViewModel @Inject constructor(
                                 isLoading = false,
                                 processSuccess = true,
                                 processingProgress = 1f,
-                                error = null,
                                 currentAudioBuffer = null
                             )
                             loadTracks()
@@ -114,19 +111,17 @@ class SongViewModel @Inject constructor(
                         is ProcessingState.Error -> {
                             _uiState.value = _uiState.value.copy(
                                 isLoading = false,
-                                error = "Erreur lors du traitement: ${state.message}",
-                                processSuccess = false,
+                                error = state.message,
                                 currentAudioBuffer = null
                             )
                         }
-                        is ProcessingState.Idle -> { /* Ignore */ }
+                        is ProcessingState.Idle -> { }
                     }
                 }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = "Erreur lors du chargement: ${e.message}",
-                    processSuccess = false,
+                    error = "Erreur: ${e.message}",
                     currentAudioBuffer = null
                 )
             }
@@ -140,13 +135,12 @@ class SongViewModel @Inject constructor(
         val title = extractTitle(uri)
         val duration = extractDuration(uri)
 
-        // Read audio data and convert to FloatArray
-        val audioData = readAudioData(uri)
+        val (audioData, sampleRate) = readAudioData(uri) // on récupère les deux
 
         AudioBuffer(
             title = title,
             audioData = audioData,
-            sampleRate = 44100, // Default sample rate, can be extracted from file
+            sampleRate = sampleRate,
             duration = duration
         )
     }
@@ -178,7 +172,7 @@ class SongViewModel @Inject constructor(
             val durationStr = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
             retriever.release()
             durationStr?.toLongOrNull() ?: 0L
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             0L
         }
     }
@@ -187,77 +181,88 @@ class SongViewModel @Inject constructor(
      * Read audio data from URI and convert to FloatArray.
      * Uses MediaExtractor to decode the audio file.
      */
-    private fun readAudioData(uri: Uri): FloatArray {
+    private fun readAudioData(uri: Uri): Pair<FloatArray, Int> {
         val extractor = MediaExtractor()
         extractor.setDataSource(context, uri, null)
 
-        // Find audio track
         var audioTrackIndex = -1
+        var inputFormat: MediaFormat? = null
         for (i in 0 until extractor.trackCount) {
             val format = extractor.getTrackFormat(i)
             val mime = format.getString(MediaFormat.KEY_MIME)
             if (mime?.startsWith("audio/") == true) {
                 audioTrackIndex = i
+                inputFormat = format
                 break
             }
         }
 
-        if (audioTrackIndex == -1) {
+        if (audioTrackIndex == -1 || inputFormat == null) {
             extractor.release()
             throw IllegalArgumentException("No audio track found in file")
         }
 
         extractor.selectTrack(audioTrackIndex)
-        val format = extractor.getTrackFormat(audioTrackIndex)
 
-        // Get sample rate and channel count
-        val sampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
-        val channelCount = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+        val actualSampleRate = inputFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE) // ici, pas en classe
 
-        // Read raw audio bytes
-        val audioBytes = mutableListOf<Byte>()
-        val buffer = ByteBuffer.allocate(1024 * 1024) // 1MB buffer
+        val mime = inputFormat.getString(MediaFormat.KEY_MIME)!!
+        val codec = MediaCodec.createDecoderByType(mime)
+        codec.configure(inputFormat, null, null, 0)
+        codec.start()
 
-        while (true) {
-            val sampleSize = extractor.readSampleData(buffer, 0)
-            if (sampleSize < 0) break
+        val bufferInfo = MediaCodec.BufferInfo()
+        val pcmSamples = mutableListOf<Short>()
+        var inputDone = false
+        var outputDone = false
 
-            buffer.position(0)
-            buffer.limit(sampleSize)
-            while (buffer.hasRemaining()) {
-                audioBytes.add(buffer.get())
+        while (!outputDone) {
+            if (!inputDone) {
+                val inputBufferId = codec.dequeueInputBuffer(10_000L)
+                if (inputBufferId >= 0) {
+                    val inputBuffer = codec.getInputBuffer(inputBufferId)!!
+                    val sampleSize = extractor.readSampleData(inputBuffer, 0)
+                    if (sampleSize < 0) {
+                        codec.queueInputBuffer(
+                            inputBufferId, 0, 0,
+                            0L, MediaCodec.BUFFER_FLAG_END_OF_STREAM
+                        )
+                        inputDone = true
+                    } else {
+                        codec.queueInputBuffer(
+                            inputBufferId, 0, sampleSize,
+                            extractor.sampleTime, 0
+                        )
+                        extractor.advance()
+                    }
+                }
             }
-            buffer.clear()
-            extractor.advance()
+
+            val outputBufferId = codec.dequeueOutputBuffer(bufferInfo, 10_000L)
+            when {
+                outputBufferId >= 0 -> {
+                    val outputBuffer = codec.getOutputBuffer(outputBufferId)!!
+                    outputBuffer.order(ByteOrder.LITTLE_ENDIAN)
+                    val shortBuffer = outputBuffer.asShortBuffer()
+                    while (shortBuffer.hasRemaining()) {
+                        pcmSamples.add(shortBuffer.get())
+                    }
+                    codec.releaseOutputBuffer(outputBufferId, false)
+                    if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
+                        outputDone = true
+                    }
+                }
+                outputBufferId == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> { }
+                outputBufferId == MediaCodec.INFO_TRY_AGAIN_LATER -> { }
+            }
         }
 
+        codec.stop()
+        codec.release()
         extractor.release()
 
-        // Convert bytes to float array (assuming 16-bit PCM)
-        val byteArray = audioBytes.toByteArray()
-        val floatArray = FloatArray(byteArray.size / 2)
-        val byteBuffer = ByteBuffer.wrap(byteArray)
-        byteBuffer.order(ByteOrder.LITTLE_ENDIAN)
-
-        for (i in floatArray.indices) {
-            val sample = byteBuffer.short
-            floatArray[i] = sample / 32768f // Normalize to [-1, 1]
-        }
-
-        return floatArray
-    }
-
-    fun deleteTrack(trackId: String) {
-        viewModelScope.launch {
-            try {
-                separatedTrackRepository.deleteTrack(trackId)
-                loadTracks()
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    error = "Erreur lors de la suppression: ${e.message}"
-                )
-            }
-        }
+        val floatArray = FloatArray(pcmSamples.size) { i -> pcmSamples[i] / 32768f }
+        return Pair(floatArray, actualSampleRate)
     }
 
     fun clearError() {

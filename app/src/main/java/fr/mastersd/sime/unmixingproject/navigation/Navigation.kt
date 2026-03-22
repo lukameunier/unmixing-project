@@ -21,8 +21,8 @@ fun Navigation(modifier: Modifier) {
         composable(Screen.Home.route) {
             HomeScreen(
                 modifier = modifier,
-                onNavigateToMusic = {
-                    navController.navigate(Screen.Music.route)
+                onNavigateToMusic = { trackId ->
+                    navController.navigate(Screen.Music.createRoute(trackId))
                 }
             )
         }
