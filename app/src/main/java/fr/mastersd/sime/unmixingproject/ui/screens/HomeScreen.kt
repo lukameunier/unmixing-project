@@ -5,20 +5,29 @@ import android.content.res.Configuration
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -32,8 +41,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -59,7 +70,6 @@ fun HomeScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showPermissionRationale by remember { mutableStateOf(false) }
 
-    // Permission state based on Android version
     val audioPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         Manifest.permission.READ_MEDIA_AUDIO
     } else {
@@ -68,22 +78,19 @@ fun HomeScreen(
 
     val permissionState = rememberPermissionState(audioPermission)
 
-    // File picker launcher - directly process audio after selection
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         uri?.let { viewModel.processAudioFromUri(it) }
     }
 
-    // Handle process success
     LaunchedEffect(uiState.processSuccess) {
         if (uiState.processSuccess) {
-            snackbarHostState.showSnackbar("Audio traité avec succès! Pistes vocals et instrumental séparées.")
+            snackbarHostState.showSnackbar("Audio traité avec succès !")
             viewModel.clearProcessSuccess()
         }
     }
 
-    // Handle errors
     LaunchedEffect(uiState.error) {
         uiState.error?.let {
             snackbarHostState.showSnackbar(it)
@@ -91,147 +98,213 @@ fun HomeScreen(
         }
     }
 
-    // Permission rationale dialog
     if (showPermissionRationale) {
         AlertDialog(
             onDismissRequest = { showPermissionRationale = false },
+            containerColor = Color(0xFF111827),
+            titleContentColor = Color(0xFFE8F4FF),
+            textContentColor = Color(0xFF8BA3C0),
             title = { Text("Permission requise") },
-            text = {
-                Text("L'application a besoin d'accéder à vos fichiers audio pour les traiter.")
-            },
+            text = { Text("L'application a besoin d'accéder à vos fichiers audio.") },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        showPermissionRationale = false
-                        permissionState.launchPermissionRequest()
-                    }
-                ) {
-                    Text("Autoriser")
+                TextButton(onClick = {
+                    showPermissionRationale = false
+                    permissionState.launchPermissionRequest()
+                }) {
+                    Text("Autoriser", color = Color(0xFF00F5FF))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showPermissionRationale = false }) {
-                    Text("Annuler")
+                    Text("Annuler", color = Color(0xFF8BA3C0))
                 }
             }
         )
     }
 
     Column(
-        modifier = modifier.padding(16.dp),
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color(0xFF080C14))
+            .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // Header
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = "Separated Tracks", style = MaterialTheme.typography.headlineLarge)
-            Icon(
-                modifier = Modifier.size(40.dp),
-                painter = painterResource(id = R.drawable.search_24dp),
-                contentDescription = "Search",
-                tint = Color.Green
-            )
+            Column {
+                Text(
+                    text = "UNMIXING",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color(0xFF00F5FF),
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Separated Tracks",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = Color(0xFFE8F4FF)
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .border(1.dp, Color(0xFF1E2D45), RoundedCornerShape(10.dp))
+                    .background(Color(0xFF111827)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    modifier = Modifier.size(20.dp),
+                    painter = painterResource(id = R.drawable.search_24dp),
+                    contentDescription = "Search",
+                    tint = Color(0xFF8BA3C0)
+                )
+            }
         }
 
-        // Loading indicator with progress
+        // Progress
         if (uiState.isLoading) {
             Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(1.dp, Color(0xFF1E2D45), RoundedCornerShape(12.dp))
+                    .background(Color(0xFF111827))
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = "Traitement en cours... ${(uiState.processingProgress * 100).toInt()}%",
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Traitement en cours...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFFE8F4FF)
+                    )
+                    Text(
+                        text = "${(uiState.processingProgress * 100).toInt()}%",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF00F5FF),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
                 LinearProgressIndicator(
                     progress = { uiState.processingProgress },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 8.dp),
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp)),
+                    color = Color(0xFF00F5FF),
+                    trackColor = Color(0xFF1E2D45)
                 )
                 uiState.currentAudioBuffer?.let { buffer ->
                     Text(
-                        text = "Fichier: ${buffer.title}",
+                        text = buffer.title,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = Color(0xFF8BA3C0)
                     )
                 }
             }
         }
 
+        // Liste
         LazyColumn(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(
-                items = separatedTracks,
-                key = { it.id }
-            ) { track ->
+            items(items = separatedTracks, key = { it.id }) { track ->
                 SeparatedTrackItem(
                     track = track,
                     onCLick = { onNavigateToMusic(track.id) }
                 )
             }
 
-            // Empty state
             if (separatedTracks.isEmpty() && !uiState.isLoading) {
                 item {
-                    Text(
-                        text = "Aucune piste séparée. Importez un fichier audio pour séparer les vocals et l'instrumental.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(16.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 48.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "Aucune piste séparée",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = Color(0xFF8BA3C0)
+                            )
+                            Text(
+                                text = "Importez un fichier audio pour commencer",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFF4A6380)
+                            )
+                        }
+                    }
                 }
             }
         }
 
+        // Boutons
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Button(
                 onClick = {
                     when {
-                        permissionState.status.isGranted -> {
-                            // Permission granted, open file picker and process immediately
-                            filePickerLauncher.launch(arrayOf("audio/*"))
-                        }
-                        permissionState.status.shouldShowRationale -> {
-                            // Show rationale dialog
-                            showPermissionRationale = true
-                        }
-                        else -> {
-                            // Request permission
-                            permissionState.launchPermissionRequest()
-                        }
+                        permissionState.status.isGranted -> filePickerLauncher.launch(arrayOf("audio/*"))
+                        permissionState.status.shouldShowRationale -> showPermissionRationale = true
+                        else -> permissionState.launchPermissionRequest()
                     }
                 },
-                shape = MaterialTheme.shapes.small,
-                modifier = Modifier.weight(4f),
-                enabled = !uiState.isLoading
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .weight(4f)
+                    .height(52.dp),
+                enabled = !uiState.isLoading,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF00F5FF),
+                    contentColor = Color(0xFF080C14),
+                    disabledContainerColor = Color(0xFF00F5FF).copy(alpha = 0.3f),
+                    disabledContentColor = Color(0xFF080C14).copy(alpha = 0.5f)
+                )
             ) {
                 Icon(
-                    modifier = Modifier.size(40.dp),
+                    modifier = Modifier.size(20.dp),
                     painter = painterResource(id = R.drawable.download_24dp),
-                    contentDescription = "Import & Process",
-                    tint = Color.Green
+                    contentDescription = null,
+                    tint = Color(0xFF080C14)
                 )
-                Text(text = "Import & Unmix")
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "Import & Unmix",
+                    fontWeight = FontWeight.Bold
+                )
             }
 
-            Button(
+            OutlinedButton(
                 onClick = {},
-                shape = MaterialTheme.shapes.small,
-                modifier = Modifier.weight(1f)
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .height(52.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF7C3AFF).copy(alpha = 0.6f)),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = Color(0xFF7C3AFF)
+                )
             ) {
                 Icon(
-                    modifier = Modifier.size(40.dp),
+                    modifier = Modifier.size(22.dp),
                     painter = painterResource(id = R.drawable.mic_24dp),
-                    contentDescription = "Record",
-                    tint = Color.Green
+                    contentDescription = null,
+                    tint = Color(0xFF7C3AFF)
                 )
             }
         }
@@ -244,27 +317,20 @@ fun HomeScreen(
 @Composable
 fun HomeScreenPreview() {
     UnmixingProjectTheme {
-        // Preview with mock data - Note: ViewModel won't work in preview
         HomeScreenPreviewContent()
     }
 }
 
 @Composable
 private fun HomeScreenPreviewContent() {
-    // Simplified preview without ViewModel
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(Color(0xFF080C14))
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = "Songs",
-            style = MaterialTheme.typography.headlineLarge
-        )
-        Text(
-            text = "Preview - Import songs functionality",
-            style = MaterialTheme.typography.bodyMedium
-        )
+        Text(text = "UNMIXING", style = MaterialTheme.typography.labelSmall, color = Color(0xFF00F5FF))
+        Text(text = "Separated Tracks", style = MaterialTheme.typography.headlineLarge, color = Color(0xFFE8F4FF))
     }
 }

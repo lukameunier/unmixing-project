@@ -27,6 +27,7 @@ class UnmixingRepository @Inject constructor(
 
     fun unmixChunked(
         title: String,
+        originalPath: String,
         duration: Long,
         chunks: Flow<PcmChunk>
     ): Flow<ProcessingState> = flow {
@@ -45,6 +46,7 @@ class UnmixingRepository @Inject constructor(
                         originalTitle = title,
                         vocalPath = update.result.vocalsPath,
                         instrumentalPath = update.result.instrumentalPath,
+                        originalPath = originalPath,
                         sampleRate = update.result.sampleRate,
                         processedAt = System.currentTimeMillis()
                     )

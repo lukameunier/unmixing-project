@@ -22,7 +22,8 @@ data class MusicUiState(
     val isLoading: Boolean = true,
     val error: String? = null,
     val isVocalsPlaying: Boolean = false,
-    val isInstrumentalPlaying: Boolean = false
+    val isInstrumentalPlaying: Boolean = false,
+    val isOriginalPlaying: Boolean = false
 )
 
 @HiltViewModel
@@ -36,6 +37,7 @@ class MusicViewModel @Inject constructor(
 
     private var vocalsPlayer: ExoPlayer? = null
     private var instrumentalPlayer: ExoPlayer? = null
+    private var originalPlayer: ExoPlayer? = null
 
     fun loadTrack(trackId: String) {
         viewModelScope.launch {
@@ -51,13 +53,11 @@ class MusicViewModel @Inject constructor(
 
     fun toggleVocals() {
         val track = _uiState.value.track ?: return
-        val isPlaying = _uiState.value.isVocalsPlaying
-
-        if (isPlaying) {
+        if (_uiState.value.isVocalsPlaying) {
             vocalsPlayer?.pause()
             _uiState.value = _uiState.value.copy(isVocalsPlaying = false)
         } else {
-            stopInstrumental()
+            stopAll()
             if (vocalsPlayer == null) {
                 vocalsPlayer = ExoPlayer.Builder(context).build().apply {
                     setMediaItem(MediaItem.fromUri(File(track.vocalPath).toUri()))
@@ -71,13 +71,11 @@ class MusicViewModel @Inject constructor(
 
     fun toggleInstrumental() {
         val track = _uiState.value.track ?: return
-        val isPlaying = _uiState.value.isInstrumentalPlaying
-
-        if (isPlaying) {
+        if (_uiState.value.isInstrumentalPlaying) {
             instrumentalPlayer?.pause()
             _uiState.value = _uiState.value.copy(isInstrumentalPlaying = false)
         } else {
-            stopVocals()
+            stopAll()
             if (instrumentalPlayer == null) {
                 instrumentalPlayer = ExoPlayer.Builder(context).build().apply {
                     setMediaItem(MediaItem.fromUri(File(track.instrumentalPath).toUri()))
@@ -89,21 +87,43 @@ class MusicViewModel @Inject constructor(
         }
     }
 
-    private fun stopVocals() {
-        vocalsPlayer?.pause()
-        _uiState.value = _uiState.value.copy(isVocalsPlaying = false)
+    fun toggleOriginal() {
+        val track = _uiState.value.track ?: return
+        if (track.originalPath.isEmpty()) return
+        if (_uiState.value.isOriginalPlaying) {
+            originalPlayer?.pause()
+            _uiState.value = _uiState.value.copy(isOriginalPlaying = false)
+        } else {
+            stopAll()
+            if (originalPlayer == null) {
+                originalPlayer = ExoPlayer.Builder(context).build().apply {
+                    setMediaItem(MediaItem.fromUri(track.originalPath.toUri()))
+                    prepare()
+                }
+            }
+            originalPlayer?.play()
+            _uiState.value = _uiState.value.copy(isOriginalPlaying = true)
+        }
     }
 
-    private fun stopInstrumental() {
+    private fun stopAll() {
+        vocalsPlayer?.pause()
         instrumentalPlayer?.pause()
-        _uiState.value = _uiState.value.copy(isInstrumentalPlaying = false)
+        originalPlayer?.pause()
+        _uiState.value = _uiState.value.copy(
+            isVocalsPlaying = false,
+            isInstrumentalPlaying = false,
+            isOriginalPlaying = false
+        )
     }
 
     override fun onCleared() {
         super.onCleared()
         vocalsPlayer?.release()
         instrumentalPlayer?.release()
+        originalPlayer?.release()
         vocalsPlayer = null
         instrumentalPlayer = null
+        originalPlayer = null
     }
 }

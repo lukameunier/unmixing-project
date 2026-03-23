@@ -8,6 +8,7 @@ fun SeparatedTrackEntity.toSeparatedTrack(): SeparatedTrack {
         originalTitle = originalTitle,
         vocalPath = vocalPath,
         instrumentalPath = instrumentalPath,
+        originalPath = originalPath,
         sampleRate = sampleRate,
         processedAt = processedAt
     )
@@ -19,6 +20,7 @@ fun SeparatedTrack.toEntity(): SeparatedTrackEntity {
         originalTitle = originalTitle,
         vocalPath = vocalPath,
         instrumentalPath = instrumentalPath,
+        originalPath = originalPath,
         sampleRate = sampleRate,
         processedAt = processedAt
     )

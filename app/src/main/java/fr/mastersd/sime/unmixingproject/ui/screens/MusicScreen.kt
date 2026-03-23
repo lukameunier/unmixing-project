@@ -1,6 +1,8 @@
 package fr.mastersd.sime.unmixingproject.ui.screens
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,14 +13,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -28,10 +30,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -40,6 +45,7 @@ import fr.mastersd.sime.unmixingproject.viewmodels.MusicViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.random.Random
 
 @Composable
 fun MusicScreen(
@@ -56,7 +62,9 @@ fun MusicScreen(
 
     Column(
         modifier = modifier
-            .fillMaxSize()
+            .fillMaxWidth()
+            .background(Color(0xFF080C14))
+            .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
         Row(
@@ -66,13 +74,15 @@ fun MusicScreen(
             IconButton(onClick = onNavigateBack) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Retour"
+                    contentDescription = "Retour",
+                    tint = Color(0xFF8BA3C0)
                 )
             }
             Text(
                 text = "Piste séparée",
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFE8F4FF)
             )
         }
 
@@ -81,15 +91,12 @@ fun MusicScreen(
         when {
             uiState.isLoading -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    CircularProgressIndicator(color = Color(0xFF00F5FF))
                 }
             }
             uiState.error != null -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = "Erreur : ${uiState.error}",
-                        color = MaterialTheme.colorScheme.error
-                    )
+                    Text(text = "Erreur : ${uiState.error}", color = Color(0xFFFF4D6D))
                 }
             }
             uiState.track != null -> {
@@ -97,8 +104,10 @@ fun MusicScreen(
                     track = uiState.track!!,
                     isVocalsPlaying = uiState.isVocalsPlaying,
                     isInstrumentalPlaying = uiState.isInstrumentalPlaying,
+                    isOriginalPlaying = uiState.isOriginalPlaying,
                     onToggleVocals = { viewModel.toggleVocals() },
-                    onToggleInstrumental = { viewModel.toggleInstrumental() }
+                    onToggleInstrumental = { viewModel.toggleInstrumental() },
+                    onToggleOriginal = { viewModel.toggleOriginal() }
                 )
             }
         }
@@ -110,21 +119,31 @@ private fun TrackContent(
     track: SeparatedTrack,
     isVocalsPlaying: Boolean,
     isInstrumentalPlaying: Boolean,
+    isOriginalPlaying: Boolean,
     onToggleVocals: () -> Unit,
-    onToggleInstrumental: () -> Unit
+    onToggleInstrumental: () -> Unit,
+    onToggleOriginal: () -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         TrackInfoCard(track)
+        if (track.originalPath.isNotEmpty()) {
+            StemPlayerCard(
+                label = "🎵 Original",
+                isPlaying = isOriginalPlaying,
+                accentColor = Color(0xFF8BA3C0),
+                onToggle = onToggleOriginal
+            )
+        }
         StemPlayerCard(
             label = "🎤 Vocals",
             isPlaying = isVocalsPlaying,
-            accentColor = MaterialTheme.colorScheme.primary,
+            accentColor = Color(0xFF00F5FF),
             onToggle = onToggleVocals
         )
         StemPlayerCard(
             label = "🎸 Instrumental",
             isPlaying = isInstrumentalPlaying,
-            accentColor = MaterialTheme.colorScheme.secondary,
+            accentColor = Color(0xFF7C3AFF),
             onToggle = onToggleInstrumental
         )
     }
@@ -132,40 +151,41 @@ private fun TrackContent(
 
 @Composable
 private fun TrackInfoCard(track: SeparatedTrack) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .border(1.dp, Color(0xFF1E2D45), RoundedCornerShape(16.dp))
+            .background(Color(0xFF111827))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = track.originalTitle,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                InfoChip(label = "Date", value = formatDate(track.processedAt))
-                InfoChip(label = "Sample rate", value = "${track.sampleRate} Hz")
-            }
+        Text(
+            text = track.originalTitle,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFFE8F4FF)
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+            InfoChip(label = "DATE", value = formatDate(track.processedAt))
+            InfoChip(label = "SAMPLE RATE", value = "${track.sampleRate} Hz")
         }
     }
 }
 
 @Composable
 private fun InfoChip(label: String, value: String) {
-    Column {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = Color(0xFF4A6380)
         )
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFFE8F4FF)
         )
     }
 }
@@ -177,40 +197,64 @@ private fun StemPlayerCard(
     accentColor: Color,
     onToggle: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    // Waveform placeholder générée une seule fois par card
+    val waveformSamples = remember {
+        List(60) { Random.nextFloat() * 0.8f + 0.1f }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .border(1.dp, accentColor.copy(alpha = 0.25f), RoundedCornerShape(16.dp))
+            .background(Color(0xFF111827))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+        Text(
+            text = label,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFFE8F4FF)
+        )
+
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(72.dp)
         ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
+            val barWidth = size.width / waveformSamples.size
+            val centerY = size.height / 2f
+
+            waveformSamples.forEachIndexed { index, amplitude ->
+                val barHeight = amplitude * size.height * 0.9f
+                val x = index * barWidth + barWidth / 2f
+                drawLine(
+                    color = accentColor.copy(alpha = if (isPlaying) 1f else 0.35f),
+                    start = Offset(x, centerY - barHeight / 2f),
+                    end = Offset(x, centerY + barHeight / 2f),
+                    strokeWidth = (barWidth * 0.6f).coerceAtLeast(2f),
+                    cap = StrokeCap.Round
+                )
+            }
+        }
+
+        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(CircleShape)
+                    .background(if (isPlaying) accentColor else Color.Transparent)
+                    .border(1.5.dp, accentColor, CircleShape),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(52.dp)
-                        .clip(CircleShape)
-                        .background(accentColor),
-                    contentAlignment = Alignment.Center
-                ) {
-                    IconButton(onClick = onToggle) {
-                        Icon(
-                            imageVector = if (isPlaying) Icons.Default.Menu else Icons.Default.PlayArrow,
-                            contentDescription = if (isPlaying) "Pause" else "Play",
-                            tint = Color.White,
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
+                IconButton(onClick = onToggle) {
+                    Icon(
+                        imageVector = if (isPlaying) Icons.Default.Menu else Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        tint = if (isPlaying) Color(0xFF080C14) else accentColor,
+                        modifier = Modifier.size(28.dp)
+                    )
                 }
             }
         }
@@ -218,6 +262,6 @@ private fun StemPlayerCard(
 }
 
 private fun formatDate(timestamp: Long): String {
-    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    val sdf = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
     return sdf.format(Date(timestamp))
 }

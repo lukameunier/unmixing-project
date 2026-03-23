@@ -92,7 +92,7 @@ class SongViewModel @Inject constructor(
 
                 val chunks = AudioDecoder.decodeToChunks(context, uri)
 
-                unmixingRepository.unmixChunked(title, duration, chunks).collect { state ->
+                unmixingRepository.unmixChunked(title, uri.toString(), duration, chunks).collect { state ->
                     when (state) {
                         is ProcessingState.Loading -> {
                             _uiState.value = _uiState.value.copy(
