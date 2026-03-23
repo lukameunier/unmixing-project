@@ -19,14 +19,13 @@ class UnmixingPipeline @Inject constructor(
         private const val TAG = "UnmixingPipeline"
     }
 
-    val isInitialized: Boolean get() = modelRunner.isInitialized
-
     fun initialize(modelFileName: String = "model.ptl") {
         modelRunner.initialize(modelFileName)
     }
 
     fun processChunkedAudio(
-        chunks: Flow<PcmChunk>
+        chunks: Flow<PcmChunk>,
+        durationMs: Long = 0L
     ): Flow<UnmixingProgress> = flow {
         check(modelRunner.isInitialized) { "Model not initialized" }
 
@@ -36,6 +35,12 @@ class UnmixingPipeline @Inject constructor(
 
         var sampleRate = AudioPreprocessor.SAMPLE_RATE
         var chunkIndex = 0
+
+        val totalChunks = if (durationMs > 0) {
+            val totalSamples = (durationMs / 1000f * AudioPreprocessor.SAMPLE_RATE).toLong()
+            val samplesPerChunk = (AudioPreprocessor.SEGMENT_SAMPLES * AudioPreprocessor.NB_CHANNELS).toLong()
+            ((totalSamples + samplesPerChunk - 1) / samplesPerChunk).toInt().coerceAtLeast(1)
+        } else 0
 
         WavWriter(vocalsFile, sampleRate).use { vocalsWriter ->
             WavWriter(instrumentalFile, sampleRate).use { instrumentalWriter ->
@@ -56,8 +61,13 @@ class UnmixingPipeline @Inject constructor(
                     }
 
                     chunkIndex++
-                    emit(UnmixingProgress.Progress(chunkIndex.toFloat() / (chunkIndex + 1).toFloat()))
-                    Log.d(TAG, "Chunk $chunkIndex done, isFinal=${chunk.isFinal}")
+                    val progress = if (totalChunks > 0) {
+                        (chunkIndex.toFloat() / totalChunks.toFloat()).coerceIn(0f, 0.99f)
+                    } else {
+                        (chunkIndex.toFloat() / (chunkIndex + 1).toFloat()).coerceIn(0f, 0.99f)
+                    }
+                    emit(UnmixingProgress.Progress(progress))
+                    Log.d(TAG, "Chunk $chunkIndex/$totalChunks done, isFinal=${chunk.isFinal}")
                 }
             }
         }

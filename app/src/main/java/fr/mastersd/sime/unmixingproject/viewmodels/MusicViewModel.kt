@@ -97,7 +97,7 @@ class MusicViewModel @Inject constructor(
             stopAll()
             if (originalPlayer == null) {
                 originalPlayer = ExoPlayer.Builder(context).build().apply {
-                    setMediaItem(MediaItem.fromUri(track.originalPath.toUri()))
+                    setMediaItem(MediaItem.fromUri(File(track.originalPath).toUri()))
                     prepare()
                 }
             }

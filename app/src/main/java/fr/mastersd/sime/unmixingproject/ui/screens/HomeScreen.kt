@@ -148,21 +148,6 @@ fun HomeScreen(
                     color = Color(0xFFE8F4FF)
                 )
             }
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .border(1.dp, Color(0xFF1E2D45), RoundedCornerShape(10.dp))
-                    .background(Color(0xFF111827)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    modifier = Modifier.size(20.dp),
-                    painter = painterResource(id = R.drawable.search_24dp),
-                    contentDescription = "Search",
-                    tint = Color(0xFF8BA3C0)
-                )
-            }
         }
 
         // Progress
@@ -286,25 +271,6 @@ fun HomeScreen(
                 Text(
                     text = "Import & Unmix",
                     fontWeight = FontWeight.Bold
-                )
-            }
-
-            OutlinedButton(
-                onClick = {},
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .height(52.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF7C3AFF).copy(alpha = 0.6f)),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = Color(0xFF7C3AFF)
-                )
-            ) {
-                Icon(
-                    modifier = Modifier.size(22.dp),
-                    painter = painterResource(id = R.drawable.mic_24dp),
-                    contentDescription = null,
-                    tint = Color(0xFF7C3AFF)
                 )
             }
         }

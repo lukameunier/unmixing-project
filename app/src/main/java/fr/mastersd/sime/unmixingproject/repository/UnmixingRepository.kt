@@ -35,7 +35,7 @@ class UnmixingRepository @Inject constructor(
         pipeline.initialize()
         emit(ProcessingState.Loading(0.1f))
 
-        pipeline.processChunkedAudio(chunks).collect { update ->
+        pipeline.processChunkedAudio(chunks, duration).collect { update ->
             when (update) {
                 is UnmixingProgress.Progress -> {
                     emit(ProcessingState.Loading(0.1f + update.value * 0.8f))
